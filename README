@@ -1,0 +1,92 @@
+=head1 NAME
+
+Text::RecordDeduper - Remove duplicate records from a text file
+
+=head1 SYNOPSIS
+
+    use Text::RecordDeduper;
+
+    my $deduper = new Text::RecordDeduper;
+
+    # Find and remove entire lines that are duplicated
+    $deduper->dedupe_file("orig.txt");
+
+    # Dedupe comma seperated records, duplicates defined by several fields
+    $deduper->field_separator(',');
+    $deduper->add_key(field_number => 1, ignore_case => 1 );
+    $deduper->add_key(field_number => 2);
+
+    # Find 'near' dupes by allowing for given name aliases
+    my %nick_names = (Bob => 'Robert',Rob => 'Robert');
+    my $near_deduper = new Text::RecordDeduper();
+    $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
+    $near_deduper->dedupe_file("names.txt");
+
+
+NAME
+
+    Text::RecordDeduper - Remove duplicate records from a text file
+
+SYNOPSIS
+
+    use Text::RecordDeduper;
+
+    my $deduper = new Text::RecordDeduper;
+
+    # Find and remove entire lines that are duplicated
+    $deduper->dedupe_file("orig.txt");
+
+    # Dedupe comma seperated records, duplicates defined by several fields
+    $deduper->field_separator(',');
+    $deduper->add_key(field_number => 1, ignore_case => 1 );
+    $deduper->add_key(field_number => 2);
+
+    # Find 'near' dupes by allowing for given name aliases
+    my %nick_names = (Bob => 'Robert',Rob => 'Robert');
+    my $near_deduper = new Text::RecordDeduper();
+    $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
+    $near_deduper->dedupe_file("names.txt");
+
+
+DESCRIPTION
+
+This module allows you to take a text file of records and split it into 
+a file of unique and a file of duplicate records.
+
+Records are defined as a set of fields. Fields may be sepearted by spaces, 
+commas, tabs or any other delimiter. Records are separated by a new line.
+
+If no options are specifed, a duplicate will be created only when an entire
+record is duplicated.
+
+By specifying options a duplicate record is definedby  which fields or parts of 
+fields must not occur more than once per record. There are also options to 
+ignore white  space and case sensitivity.
+
+Additionally 'near' or 'fuzzy' duplicates can be defined. This is done by 
+creating aliases, such as Bob => Robert
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires Text::RecordParser
+
+
+Put the correct copyright and licence information here.
+
+Copyright (C) 2005 by Kim Ryan
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.4 or,
+at your option, any later version of Perl 5 you may have available.
+
+

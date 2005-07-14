@@ -1,0 +1,10 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+lib/Text/RecordDeduper.pm
+t/main.t
+t/tab_delim.txt
+t/pod.t
+t/pod-coverage.t
+META.yml
