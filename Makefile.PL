@@ -6,7 +6,6 @@ WriteMakefile
 (
     NAME           => 'Text::RecordDeduper',
     VERSION_FROM   => 'lib/Text/RecordDeduper.pm', 
-    PREREQ_PM      => { Text::RecordParser => 0 }, 
     ABSTRACT_FROM  => 'lib/Text/RecordDeduper.pm',
     AUTHOR         => 'Kim Ryan'
 );

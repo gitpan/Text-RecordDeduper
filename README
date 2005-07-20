@@ -1,45 +1,20 @@
-=head1 NAME
-
-Text::RecordDeduper - Remove duplicate records from a text file
-
-=head1 SYNOPSIS
-
-    use Text::RecordDeduper;
-
-    my $deduper = new Text::RecordDeduper;
-
-    # Find and remove entire lines that are duplicated
-    $deduper->dedupe_file("orig.txt");
-
-    # Dedupe comma seperated records, duplicates defined by several fields
-    $deduper->field_separator(',');
-    $deduper->add_key(field_number => 1, ignore_case => 1 );
-    $deduper->add_key(field_number => 2);
-
-    # Find 'near' dupes by allowing for given name aliases
-    my %nick_names = (Bob => 'Robert',Rob => 'Robert');
-    my $near_deduper = new Text::RecordDeduper();
-    $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
-    $near_deduper->dedupe_file("names.txt");
-
-
 NAME
 
-    Text::RecordDeduper - Remove duplicate records from a text file
+Text::RecordDeduper - Separate complete, partial and near duplicate text records
 
 SYNOPSIS
 
     use Text::RecordDeduper;
 
-    my $deduper = new Text::RecordDeduper;
+    my $deduperr = new Text::RecordDeduper;
 
     # Find and remove entire lines that are duplicated
-    $deduper->dedupe_file("orig.txt");
+    $deduperr->dedupe_file("orig.txt");
 
-    # Dedupe comma seperated records, duplicates defined by several fields
+    # Dedupe comma separated records, duplicates defined by several fields
     $deduper->field_separator(',');
     $deduper->add_key(field_number => 1, ignore_case => 1 );
-    $deduper->add_key(field_number => 2);
+    $deduper->add_key(field_number => 2, ignore_whitespace => 1);
 
     # Find 'near' dupes by allowing for given name aliases
     my %nick_names = (Bob => 'Robert',Rob => 'Robert');
@@ -59,12 +34,12 @@ commas, tabs or any other delimiter. Records are separated by a new line.
 If no options are specifed, a duplicate will be created only when an entire
 record is duplicated.
 
-By specifying options a duplicate record is definedby  which fields or parts of 
+By specifying options a duplicate record is defined by which fields or partial 
 fields must not occur more than once per record. There are also options to 
-ignore white  space and case sensitivity.
+ignore case sensitivity, leading and trailing white space.
 
-Additionally 'near' or 'fuzzy' duplicates can be defined. This is done by 
-creating aliases, such as Bob => Robert
+Additionally 'near' or 'fuzzy' duplicates can be defined. This is done by creating
+aliases, such as Bob => Robert.
 
 
 INSTALLATION
@@ -75,11 +50,6 @@ To install this module type the following:
    make
    make test
    make install
-
-DEPENDENCIES
-
-This module requires Text::RecordParser
-
 
 Put the correct copyright and licence information here.
 

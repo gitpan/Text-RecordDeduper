@@ -1,20 +1,20 @@
 =head1 NAME
 
-Text::RecordDeduper - Remove duplicate records from a text file
+Text::RecordDeduper - Separate complete, partial and near duplicate text records
 
 =head1 SYNOPSIS
 
     use Text::RecordDeduper;
 
-    my $deduper = new Text::RecordDeduper;
+    my $deduperr = new Text::RecordDeduper;
 
     # Find and remove entire lines that are duplicated
-    $deduper->dedupe_file("orig.txt");
+    $deduperr->dedupe_file("orig.txt");
 
-    # Dedupe comma seperated records, duplicates defined by several fields
+    # Dedupe comma separated records, duplicates defined by several fields
     $deduper->field_separator(',');
     $deduper->add_key(field_number => 1, ignore_case => 1 );
-    $deduper->add_key(field_number => 2);
+    $deduper->add_key(field_number => 2, ignore_whitespace => 1);
 
     # Find 'near' dupes by allowing for given name aliases
     my %nick_names = (Bob => 'Robert',Rob => 'Robert');
@@ -34,48 +34,48 @@ commas, tabs or any other delimiter. Records are separated by a new line.
 If no options are specifed, a duplicate will be created only when an entire
 record is duplicated.
 
-By specifying options a duplicate record is definedby  which fields or parts of 
+By specifying options a duplicate record is defined by which fields or partial 
 fields must not occur more than once per record. There are also options to 
-ignore white  space and case sensitivity.
+ignore case sensitivity, leading and trailing white space.
 
 Additionally 'near' or 'fuzzy' duplicates can be defined. This is done by creating
-aliases, such as Bob => Robert
+aliases, such as Bob => Robert.
 
 =head1 Example
 
-Given a text file names.txt with space separated values and duplicates defined 
+Given a text file F<names.txt> with space separated values and duplicates defined 
 by the second and third columns:
 
-100 Robert   Smith    
-101 Bob      Smith    
-102 John     Brown    
-103 Jack     White   
-104 Bob      Smythe    
-105 Robert   Smith    
+    100 Robert   Smith    
+    101 Bob      Smith    
+    102 John     Brown    
+    103 Jack     White   
+    104 Bob      Smythe    
+    105 Robert   Smith    
 
 
 use Text::RecordDeduper;
 
-my %nick_names = (Bob => 'Robert',Rob => 'Robert');
-my $near_dedupes = new Text::RecordDeduper();
-$near_dedupes->field_separator(' ');
-$near_dedupes->add_key(field_number => 2, alias => \%nick_names) or die;
-$near_dedupes->add_key(field_number => 3) or die;
-$near_dedupes->dedupe_file("names.txt");
+    my %nick_names = (Bob => 'Robert',Rob => 'Robert');
+    my $near_deduper = new Text::RecordDeduper();
+    $near_deduper->field_separator(' ');
+    $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
+    $near_deduper->add_key(field_number => 3) or die;
+    $near_deduper->dedupe_file("names.txt");
 
 Text::RecordDeduper will produce a file of unique records, F<names_uniqs.txt>
 
-100 Robert   Smith    
-102 John     Brown    
-103 Jack     White   
-104 Bob      Smythe    
+    100 Robert   Smith    
+    102 John     Brown    
+    103 Jack     White   
+    104 Bob      Smythe    
 
 and a file of duplicates, F<names_dupes.txt>
 
-101 Bob      Smith    
-105 Robert   Smith   
+    101 Bob      Smith    
+    105 Robert   Smith   
 
-The original file, names.txt is left intact.
+The original file, F<names.txt> is left intact.
 
 =head1 METHODS
 
@@ -95,7 +95,61 @@ deduper assumes you have fixed width fields .
 
 =head2 add_key
 
-    $deduper->add_key(field_number => 1, ignore_case => 1 );
+Lets you add a field to the definition of a duplicate record. If no keys
+have been added, the entire record will become the key, so that only records 
+duplicated in their entirity are removed.
+
+    $deduper->add_key
+    (
+        field_number => 1, 
+        key_length => 5, 
+        ignore_case => 1,
+        ignore_whitespace => 1,
+        alias => \%nick_names
+    );
+
+=over 4
+
+=item field_number
+
+Specifies the number of the field in the record to add to the key (1,2 ...). 
+Note that this option only applies to character separated data. You will get a 
+warning if you try to specify a field_number for fixed width data.
+
+=item start_pos
+
+Specifies the position of the field in characters to add to the key. Note that 
+this option only applies to fixed width data. You will get a warning if you 
+try to specify a start_pos for character separated data. You must also specify
+a key_length
+
+
+=item key_length
+
+The length of a key field. This must be specifed if you are using fixed width 
+data (along with a start_pos). It is optional for character separated data.
+
+=item ignore_case 
+
+When defining a duplicate, ignore the case of characters, so Robert and ROBERT
+are equivalent.
+
+=item ignore_whitespace
+
+When defining a duplicate, ignore white space that leasd or trails a field's data.
+
+=item alias
+
+When defining a duplicate, allow for aliases substitution. For example
+
+    my %nick_names = (Bob => 'Robert',Rob => 'Robert');
+    $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
+
+Whenever field 2 contains 'Bob', it will be treated as a duplicate of a record 
+where field 2 contains 'Robert'.
+
+=back
+
 
 =head2 dedupe_file
 
@@ -104,22 +158,20 @@ deduper assumes you have fixed width fields .
 
 =head1 TO DO
 
-Allow for multi line records
-Ignore leading and trailing white space in fields
-Add batch mode drive by a config file
-Allow user to warn when overwritting output files
-Allow user ot customise suffix fo uniq and dupe output files
+    Allow for multi line records
+    Add batch mode driven by config file or command line options
+    Allow user to warn when over writing output files
+    Allow user to customise suffix for uniq and dupe output files
 
 
 =head1 SEE ALSO
 
-sort(3), uniq(3)
-L<Text::RecordParser>,L<Text::xSV>
+sort(3), uniq(3), L<Text::ParseWords>, L<Text::RecordParser>, L<Text::xSV>
 
 
 =head1 AUTHOR
 
-RecordDeduper was written by Kim Ryan E<lt>kimryan at cpan d o t orgE><gt>
+RecordDeduper was written by Kim Ryan <kimryan at cpan d o t org>
 
 
 =head1 COPYRIGHT AND LICENSE
@@ -137,7 +189,7 @@ at your option, any later version of Perl 5 you may have available.
 
 package Text::RecordDeduper;
 use File::Basename;
-use Text::RecordParser;
+use Text::ParseWords;
 
 
 
@@ -148,7 +200,7 @@ use warnings;
 require Exporter;
 
 our @ISA = qw(Exporter);
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 #-------------------------------------------------------------------------------
 # Create a new instance of a deduping object. 
@@ -158,40 +210,45 @@ sub new
     my $class = shift;
     my %args = @_;
 
-    my $dedupe = {};
-    bless($dedupe,$class);
+    my $deduper = {};
+    bless($deduper,$class);
 
 
     # Default to no separator, until we find otherwise
-    $dedupe->{field_separator} = '';
+    $deduper->{field_separator} = '';
 
-    return ($dedupe);
+    return ($deduper);
 }
 #-------------------------------------------------------------------------------
 # Create a new instance of a deduping object. 
 
 sub field_separator
 {
-    my $dedupe = shift;
+    my $deduper = shift;
 
     my ($field_separator) = @_;
-    # add error checking here
-    $dedupe->{field_separator} = $field_separator;
 
-    return($dedupe);
+    # Escape pipe symbol so it does get interpreted as alternation charcter
+    # when splitting fileds in _get_key_fields
+    $field_separator eq '|' and $field_separator = '\|';
+
+    # add more error checking here
+
+    $deduper->{field_separator} = $field_separator;
+    return($deduper);
 }
 #-------------------------------------------------------------------------------
 #  
 sub add_key
 {
-    my $dedupe = shift;
+    my $deduper = shift;
     my %args = @_;
 
 
     my $key_number;
     if ( $args{field_number} )
     {
-        if ( $dedupe->{field_separator} )
+        if ( $deduper->{field_separator} )
         {
             # extract the column number which will form the index for all following properties
             $key_number = $args{field_number};
@@ -205,7 +262,7 @@ sub add_key
     }
     elsif ( $args{start_pos} )
     {
-        if ( $dedupe->{field_separator} )
+        if ( $deduper->{field_separator} )
         {
             warn "Cannot use start_pos on character separated records";
             return;
@@ -229,16 +286,18 @@ sub add_key
 
     foreach my $current_key (keys %args)
     {
-        $dedupe->{key}{$key_number}{$current_key} = $args{$current_key};
+        $deduper->{key}{$key_number}{$current_key} = $args{$current_key};
     }
-    return ($dedupe);
+    return ($deduper);
 }
 #-------------------------------------------------------------------------------
 # 
 sub dedupe_file
 {
-    my ($dedupe,$input_file_name) = @_;
+    my ($deduper,$input_file_name) = @_;
 
+
+    # to do, move file ops to it's own sub routine
     unless ( -T $input_file_name and -s $input_file_name )
     {
         warn("Could not open input file: $input_file_name"); 
@@ -268,14 +327,6 @@ sub dedupe_file
         return;
     }
 
-    my $record_parser;
-    # Initialise Record Parser object if needed
-    if ( $dedupe->{field_separator} )
-    {
-        $record_parser = Text::RecordParser->new;
-        $record_parser->field_separator($dedupe->{field_separator});
-    }
-
 
     my %seen;
     while ( <INPUT_FH> )
@@ -283,8 +334,8 @@ sub dedupe_file
         chomp;
         my $current_line = $_;
         
-        my $key = _create_key($dedupe,$record_parser,$current_line);
-        print("KEY: $key\n");
+        my $key = _create_key($deduper,$current_line);
+        # print("KEY: $key\n");
         
         if ( $seen{$key} )
         {
@@ -306,13 +357,13 @@ sub dedupe_file
 # 
 sub _create_key
 {
-    my ($dedupe,$record_parser,$current_line) = @_;
+    my ($deduper,$current_line) = @_;
 
     my $complete_key = '';
-    if ( $dedupe->{key} )
+    if ( $deduper->{key} )
     {
-        my (@keys) = _get_key_fields($dedupe,$record_parser,$current_line);
-        $complete_key = _transform_key_fields($dedupe,@keys);
+        my (@keys) = _get_key_fields($deduper,$current_line);
+        $complete_key = _transform_key_fields($deduper,@keys);
     }
     else
     {
@@ -325,24 +376,27 @@ sub _create_key
 
 sub _get_key_fields
 {
-    my ($dedupe,$record_parser,$current_line) = @_;
+    my ($deduper,$current_line) = @_;
 
     my @keys;
 
-    if ( $dedupe->{field_separator} )
+    if ( $deduper->{field_separator} )
     {
-        # Escape pipe symbol so it does not mean alternation
-        # $field_separator eq '|' and $field_separator = '\|';
 
-        # TO DO!!! text::xsv ???       
-        # my (@field_data) = split(/$field_separator/,$current_line);
-        $record_parser->data($current_line);
-        my (@field_data) = $record_parser->fetchrow_array;
+        # check for names with apostrophes, like O'Reilly
+        if ( $current_line =~ /\w'\w/ )
+        {
+            # The ParseWords module will not handle single quotes in fields, 
+            # so add an escape sequence between any apostrophe bounded by a
+            # letter on each side.
+            $current_line =~ s/(\w)'(\w)/$1\\'$2/g;
+        }
 
-
-
+        # Use ParseWords module to spearate delimited field. 0 option means don't return quotes enclosing field
+        my (@field_data) = &Text::ParseWords::parse_line($deduper->{field_separator},0,$current_line);
+        
         # TO DO, test for column number out of bounds
-        foreach my $field_number ( sort keys %{$dedupe->{key}} )
+        foreach my $field_number ( sort keys %{$deduper->{key}} )
         {
             my $current_field_data = $field_data[$field_number - 1];
             unless ( $current_field_data )
@@ -351,18 +405,18 @@ sub _get_key_fields
                 return;
             }
 
-            if ( $dedupe->{key}->{$field_number}->{key_length} )
+            if ( $deduper->{key}->{$field_number}->{key_length} )
             {
-                $current_field_data = substr($current_field_data,0,$dedupe->{key}->{$field_number}->{key_length});
+                $current_field_data = substr($current_field_data,0,$deduper->{key}->{$field_number}->{key_length});
             }
             push(@keys,$current_field_data);
         }
     }
     else
     {
-        foreach my $field_number ( sort keys %{$dedupe->{key}} )
+        foreach my $field_number ( sort keys %{$deduper->{key}} )
         {
-            push(@keys,substr($current_line,$field_number - 1,$dedupe->{key}->{$field_number}->{key_length}));
+            push(@keys,substr($current_line,$field_number - 1,$deduper->{key}->{$field_number}->{key_length}));
         }
     }
     return(@keys);
@@ -373,31 +427,37 @@ sub _get_key_fields
 
 sub _transform_key_fields
 {
-    my ($dedupe,@keys) = @_;
+    my ($deduper,@keys) = @_;
 
     my $complete_key = '';
     
-    foreach my $field_number ( sort keys %{$dedupe->{key}} )
+    foreach my $field_number ( sort keys %{$deduper->{key}} )
     {
         my $current_key = $keys[ $field_number - 1 ];
 
         # Aliases
-        if ( $dedupe->{key}->{$field_number}->{alias} )
+        if ( $deduper->{key}->{$field_number}->{alias} )
         {
             # QUERY!!! should we allow for case-insensitive aliases???
-            if ( $dedupe->{key}->{$field_number}->{alias}{$current_key} )
+            if ( $deduper->{key}->{$field_number}->{alias}{$current_key} )
             {
-                $current_key = $dedupe->{key}->{$field_number}->{alias}{$current_key};
+                $current_key = $deduper->{key}->{$field_number}->{alias}{$current_key};
             }
         }
 
         # If this key is case insensitive, fold data to lower case
-        if ( $dedupe->{key}->{$field_number}->{ignore_case} )
+        if ( $deduper->{key}->{$field_number}->{ignore_case} )
         {
             $current_key = lc($current_key);
         }
 
-        # TO DO, ignote trailing white space???
+        # dtrip out leading or trailing whitespace
+        if ( $deduper->{key}->{$field_number}->{ignore_whitespace} )
+        {
+            $current_key =~ s/^\s+//;
+            $current_key =~ s/\s+$//;
+        }
+
 
         $complete_key .= $current_key;
         # Add field sepeartor to help in debugging and reporting
