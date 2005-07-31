@@ -6,10 +6,10 @@ SYNOPSIS
 
     use Text::RecordDeduper;
 
-    my $deduperr = new Text::RecordDeduper;
+    my $deduper = new Text::RecordDeduper;
 
     # Find and remove entire lines that are duplicated
-    $deduperr->dedupe_file("orig.txt");
+    $deduper->dedupe_file("orig.txt");
 
     # Dedupe comma separated records, duplicates defined by several fields
     $deduper->field_separator(',');
@@ -21,6 +21,9 @@ SYNOPSIS
     my $near_deduper = new Text::RecordDeduper();
     $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
     $near_deduper->dedupe_file("names.txt");
+
+    # Now find 'near' dupes in an array of records
+    my ($uniqs,$dupes) = $near_deduper->dedupe_array(\@some_records);
 
 
 DESCRIPTION
@@ -40,6 +43,10 @@ ignore case sensitivity, leading and trailing white space.
 
 Additionally 'near' or 'fuzzy' duplicates can be defined. This is done by creating
 aliases, such as Bob => Robert.
+
+This module is useful for finding duplicates that have been created by
+multiple data entry, or merging of similar records
+
 
 
 INSTALLATION

@@ -1,5 +1,9 @@
 Revision history for Perl extension Text::RecordDeduper.
 
+0.03  Jul 28 2005
+    - added dedupe_array method
+    - fixed problems with tests in main.t
+
 0.02  Jul 20 2005
     - added ignore_whitespace option
     - allowed for apostrophes in names like O'Brein

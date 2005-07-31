@@ -6,10 +6,10 @@ Text::RecordDeduper - Separate complete, partial and near duplicate text records
 
     use Text::RecordDeduper;
 
-    my $deduperr = new Text::RecordDeduper;
+    my $deduper = new Text::RecordDeduper;
 
     # Find and remove entire lines that are duplicated
-    $deduperr->dedupe_file("orig.txt");
+    $deduper->dedupe_file("orig.txt");
 
     # Dedupe comma separated records, duplicates defined by several fields
     $deduper->field_separator(',');
@@ -22,17 +22,21 @@ Text::RecordDeduper - Separate complete, partial and near duplicate text records
     $near_deduper->add_key(field_number => 2, alias => \%nick_names) or die;
     $near_deduper->dedupe_file("names.txt");
 
+    # Now find 'near' dupes in an array of records
+    my ($uniqs,$dupes) = $near_deduper->dedupe_array(\@some_records);
+
+
 
 =head1 DESCRIPTION
 
 This module allows you to take a text file of records and split it into 
 a file of unique and a file of duplicate records.
 
-Records are defined as a set of fields. Fields may be sepearted by spaces, 
+Records are defined as a set of fields. Fields may be separated by spaces, 
 commas, tabs or any other delimiter. Records are separated by a new line.
 
-If no options are specifed, a duplicate will be created only when an entire
-record is duplicated.
+If no options are specifed, a duplicate will be created only when all the
+fields in arecord is duplicated.
 
 By specifying options a duplicate record is defined by which fields or partial 
 fields must not occur more than once per record. There are also options to 
@@ -40,6 +44,9 @@ ignore case sensitivity, leading and trailing white space.
 
 Additionally 'near' or 'fuzzy' duplicates can be defined. This is done by creating
 aliases, such as Bob => Robert.
+
+This module is useful for finding duplicates that have been created by
+multiple data entry, or merging of similar records
 
 =head1 Example
 
@@ -54,7 +61,7 @@ by the second and third columns:
     105 Robert   Smith    
 
 
-use Text::RecordDeduper;
+    use Text::RecordDeduper;
 
     my %nick_names = (Bob => 'Robert',Rob => 'Robert');
     my $near_deduper = new Text::RecordDeduper();
@@ -87,7 +94,7 @@ called before any of the following methods are invoked.
 =head2 field_separator
 
 Sets the token to use as the field delimiter. Accepts any character as well as
-Perl escaped characters such as \t etc.  If this method ins not called the 
+Perl escaped characters such as "\t" etc.  If this method ins not called the 
 deduper assumes you have fixed width fields .
 
     $deduper->field_separator(',');
@@ -121,7 +128,9 @@ warning if you try to specify a field_number for fixed width data.
 Specifies the position of the field in characters to add to the key. Note that 
 this option only applies to fixed width data. You will get a warning if you 
 try to specify a start_pos for character separated data. You must also specify
-a key_length
+a key_length.
+
+Note that the first column is numbered 1, not 0.
 
 
 =item key_length
@@ -153,14 +162,33 @@ where field 2 contains 'Robert'.
 
 =head2 dedupe_file
 
+This method takes a file name F<basename.ext> as it's only argument. The file is
+processed to detect duplicates, as defined by the methods above. Unique records
+are place in a file named  F<basename_uniq.ext> and duplicates in a file named 
+F<basename_dupe.ext>. Note that If either of this output files exist, they are 
+over written The orignal file is left intact.
+
     $deduper->dedupe_file("orig.txt");
+
+
+=head2 dedupe_array
+
+This method takes an array reference as it's only argument. The array is
+processed to detect duplicates, as defined by the methods above. Two array
+references are retuned, the first to the set of unique records and the second 
+to the set of duplicates.
+
+Note that the memory constraints of your system may prvent you from processing 
+very large arrays.
+
+    my ($unique_records,duplicate_records) = $deduper->dedupe_array(\@some_records);
 
 
 =head1 TO DO
 
     Allow for multi line records
     Add batch mode driven by config file or command line options
-    Allow user to warn when over writing output files
+    Allow option to warn user when over writing output files
     Allow user to customise suffix for uniq and dupe output files
 
 
@@ -190,6 +218,8 @@ at your option, any later version of Perl 5 you may have available.
 package Text::RecordDeduper;
 use File::Basename;
 use Text::ParseWords;
+use Data::Dumper;
+
 
 
 
@@ -200,7 +230,7 @@ use warnings;
 require Exporter;
 
 our @ISA = qw(Exporter);
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 #-------------------------------------------------------------------------------
 # Create a new instance of a deduping object. 
@@ -228,8 +258,8 @@ sub field_separator
 
     my ($field_separator) = @_;
 
-    # Escape pipe symbol so it does get interpreted as alternation charcter
-    # when splitting fileds in _get_key_fields
+    # Escape pipe symbol so it does get interpreted as alternation character
+    # when splitting fields in _get_key_fields
     $field_separator eq '|' and $field_separator = '\|';
 
     # add more error checking here
@@ -245,16 +275,11 @@ sub add_key
     my %args = @_;
 
 
-    my $key_number;
+    $deduper->{key_counter}++;
+
     if ( $args{field_number} )
     {
-        if ( $deduper->{field_separator} )
-        {
-            # extract the column number which will form the index for all following properties
-            $key_number = $args{field_number};
-            delete($args{field_number});
-        }
-        else
+        unless ( $deduper->{field_separator} )
         {
             warn "Cannot use field_number on fixed width lines";
             return;
@@ -269,14 +294,7 @@ sub add_key
         }
         else
         {
-            if ( $args{key_length} )
-            {
-                # TO DO, test for out of bounds or overlapping keys here!!!
-                # how to know maximum line length?
-                $key_number = $args{start_pos};
-                delete($args{start_pos});
-            }
-            else
+            unless ( $args{key_length} )
             {
                 warn "No key_length defined for start_pos: $args{start_pos}";
                 return;
@@ -286,7 +304,7 @@ sub add_key
 
     foreach my $current_key (keys %args)
     {
-        $deduper->{key}{$key_number}{$current_key} = $args{$current_key};
+        $deduper->{key}{$deduper->{key_counter}}{$current_key} = $args{$current_key};
     }
     return ($deduper);
 }
@@ -346,12 +364,37 @@ sub dedupe_file
             $seen{$key}++;
             print(UNIQUE_FH $current_line,"\n");
         }
-
     }
     close(INPUT_FH);
     close(UNIQUE_FH);
     close(DUPES_FH);
 
+}
+#-------------------------------------------------------------------------------
+# 
+sub dedupe_array
+{
+    my ($deduper,$input_array_ref) = @_;
+
+
+    my %seen;
+    my (@unique,@dupe);
+    foreach my $current_line ( @$input_array_ref )
+    {
+        my $key = _create_key($deduper,$current_line);
+        # print("KEY: $key\n");
+
+        if ( $seen{$key} )
+        {
+            push(@dupe,$current_line);
+        }
+        else
+        {
+            $seen{$key}++;
+            push(@unique,$current_line);
+        }
+    }
+    return(\@unique,\@dupe);
 }
 #-------------------------------------------------------------------------------
 # 
@@ -383,40 +426,63 @@ sub _get_key_fields
     if ( $deduper->{field_separator} )
     {
 
-        # check for names with apostrophes, like O'Reilly
-        if ( $current_line =~ /\w'\w/ )
+        # The ParseWords module will not handle single quotes within fields, 
+        # so add an escape sequence between any apostrophe bounded by a
+        # letter on each side. Note that this applies even if there are no
+        # quotes in your data, the module needs balanced quotes.        
+        if (  $current_line =~ /\w'\w/ )
         {
-            # The ParseWords module will not handle single quotes in fields, 
-            # so add an escape sequence between any apostrophe bounded by a
-            # letter on each side.
+            # check for names with apostrophes, like O'Reilly
             $current_line =~ s/(\w)'(\w)/$1\\'$2/g;
         }
 
-        # Use ParseWords module to spearate delimited field. 0 option means don't return quotes enclosing field
+        # Use ParseWords module to spearate delimited field. 
+        # '0' option means don't return any quotes enclosing a field
         my (@field_data) = &Text::ParseWords::parse_line($deduper->{field_separator},0,$current_line);
+
         
-        # TO DO, test for column number out of bounds
-        foreach my $field_number ( sort keys %{$deduper->{key}} )
+        foreach my $key_number ( sort keys %{$deduper->{key}} )
         {
-            my $current_field_data = $field_data[$field_number - 1];
+            my $current_field_data = $field_data[$deduper->{key}->{$key_number}->{field_number} - 1];
             unless ( $current_field_data )
             {
-                warn("Too many columns specified");
-                return;
+                # A record has less fields then we were expecting, so no
+                # point searching for anymore.
+                print("Short record\n");
+                print("Array indice :",$deduper->{key}->{$key_number}->{field_number} - 1,"\n");
+                print("Current line : $current_line\n");
+
+                print("All fields   :", @field_data,"\n");
+                last;
+                # TO DO, add a warning if user specifies records must have 
+                # a full set of fields??
             }
 
-            if ( $deduper->{key}->{$field_number}->{key_length} )
+            if ( $deduper->{key}->{$key_number}->{key_length} )
             {
-                $current_field_data = substr($current_field_data,0,$deduper->{key}->{$field_number}->{key_length});
+                $current_field_data = substr($current_field_data,0,$deduper->{key}->{$key_number}->{key_length});
             }
             push(@keys,$current_field_data);
         }
     }
     else
     {
-        foreach my $field_number ( sort keys %{$deduper->{key}} )
+        foreach my $key_number ( sort keys %{$deduper->{key}} )
         {
-            push(@keys,substr($current_line,$field_number - 1,$deduper->{key}->{$field_number}->{key_length}));
+            my $current_field_data = substr($current_line,$deduper->{key}->{$key_number}->{start_pos} - 1,
+                $deduper->{key}->{$key_number}->{key_length});
+            if ( $current_field_data )
+            {
+                push(@keys,$current_field_data);
+            }
+            else
+            {
+                print("Short record\n");
+                print("Current line : $current_line\n");
+                last;
+                # TO DO, add a warning if user specifies records must have 
+                # a full set of fields??
+            }
         }
     }
     return(@keys);
@@ -431,28 +497,28 @@ sub _transform_key_fields
 
     my $complete_key = '';
     
-    foreach my $field_number ( sort keys %{$deduper->{key}} )
+    foreach my $key_number ( sort keys %{$deduper->{key}} )
     {
-        my $current_key = $keys[ $field_number - 1 ];
+        my $current_key = $keys[ $key_number - 1 ];
 
         # Aliases
-        if ( $deduper->{key}->{$field_number}->{alias} )
+        if ( $deduper->{key}->{$key_number}->{alias} )
         {
             # QUERY!!! should we allow for case-insensitive aliases???
-            if ( $deduper->{key}->{$field_number}->{alias}{$current_key} )
+            if ( $deduper->{key}->{$key_number}->{alias}{$current_key})
             {
-                $current_key = $deduper->{key}->{$field_number}->{alias}{$current_key};
+                $current_key = $deduper->{key}->{$key_number}->{alias}{$current_key};
             }
         }
 
         # If this key is case insensitive, fold data to lower case
-        if ( $deduper->{key}->{$field_number}->{ignore_case} )
+        if ( $deduper->{key}->{$key_number}->{ignore_case} )
         {
             $current_key = lc($current_key);
         }
 
-        # dtrip out leading or trailing whitespace
-        if ( $deduper->{key}->{$field_number}->{ignore_whitespace} )
+        # strip out leading or trailing whitespace
+        if ( $deduper->{key}->{$key_number}->{ignore_whitespace} )
         {
             $current_key =~ s/^\s+//;
             $current_key =~ s/\s+$//;

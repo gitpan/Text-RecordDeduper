@@ -1,4 +1,0 @@
-Robert	O'Brien	Waverley	100
-robert	O'Brien   	Waverley	101
-Bob	O'BrienWaverley	102
-Jane	Doe	Bondi	103
